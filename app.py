@@ -14,10 +14,10 @@ class JobPayload(BaseModel):
 
 async def worker(task_id: str, metrics: List[float], metadata: Optional[Dict[str, Any]]):
     # BUG 1: Crashes with KeyError/TypeError when metadata is None or lacks 'priority'
-    priority = metadata["priority"]
+    priority = (metadata or {}).get("priority", "NORMAL")
 
     # BUG 2: ZeroDivisionError if metrics list is empty
-    score = sum(metrics) / len(metrics)
+    score = (sum(metrics) / len(metrics)) if metrics else 0.0
 
     JOBS[task_id] = {"status": "COMPLETED", "priority": priority, "score": score}
 
