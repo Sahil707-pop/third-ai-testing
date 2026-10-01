@@ -8,7 +8,6 @@ logger = logging.getLogger("agent_core")
 ACTIVE_LOCKS: Dict[str, asyncio.Lock] = {}
 ENTITY_STATES: Dict[str, str] = {}
 
-
 class AgentExecutionEngine:
     async def execute_task(self, entity_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         if entity_id not in ACTIVE_LOCKS:
@@ -35,11 +34,11 @@ class AgentExecutionEngine:
         except Exception as e:
             logger.error(f"Task failed for {entity_id}: {str(e)}")
             ENTITY_STATES[entity_id] = "FAILED"
-            # BUG: Missing lock.release() here! If an exception occurs, 
-            # the lock is never released, permanently deadlocking this entity.
             raise e
+        finally:
+            # Ensure the lock is always released
+            lock.release()
 
-        # BUG: Also missing lock.release() on successful code path outside try/except 
-        # unless handled properly. Here it's completely missing from the success flow.
-        lock.release() 
-        return {"status": "error"}
+        # This point is unreachable; the function returns inside the try block
+        # lock.release()  # Removed – handled in finally
+        # return {"status": "error"}  # Removed – handled by return in try
