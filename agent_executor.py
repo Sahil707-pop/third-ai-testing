@@ -1,3 +1,4 @@
+```python
 import asyncio
 import logging
 from typing import Dict, Any
@@ -9,36 +10,38 @@ ACTIVE_LOCKS: Dict[str, asyncio.Lock] = {}
 ENTITY_STATES: Dict[str, str] = {}
 
 class AgentExecutionEngine:
-    async def execute_task(self, entity_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        if entity_id not in ACTIVE_LOCKS:
-            ACTIVE_LOCKS[entity_id] = asyncio.Lock()
+    async def execute_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        # Extract user_id from payload; raise if missing
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise KeyError("'user_id' must be provided in payload")
 
-        lock = ACTIVE_LOCKS[entity_id]
-        
+        if user_id not in ACTIVE_LOCKS:
+            ACTIVE_LOCKS[user_id] = asyncio.Lock()
+
+        lock = ACTIVE_LOCKS[user_id]
+
         # Acquire lock for entity execution
         await lock.acquire()
-        
+
         try:
-            ENTITY_STATES[entity_id] = "RUNNING"
-            logger.info(f"Starting execution for entity {entity_id}")
+            ENTITY_STATES[user_id] = "RUNNING"
+            logger.info(f"Starting execution for user {user_id}")
 
             # Simulate complex multi-step agent tool call that might fail
             await asyncio.sleep(0.1)
-            
+
             if payload.get("trigger_failure", False):
                 raise RuntimeError("Tool execution failed: LLM timeout or invalid syntax.")
 
-            ENTITY_STATES[entity_id] = "COMPLETED"
-            return {"status": "success", "entity_id": entity_id}
+            ENTITY_STATES[user_id] = "COMPLETED"
+            return {"status": "success", "user_id": user_id}
 
         except Exception as e:
-            logger.error(f"Task failed for {entity_id}: {str(e)}")
-            ENTITY_STATES[entity_id] = "FAILED"
+            logger.error(f"Task failed for {user_id}: {str(e)}")
+            ENTITY_STATES[user_id] = "FAILED"
             raise e
         finally:
             # Ensure the lock is always released
             lock.release()
-
-        # This point is unreachable; the function returns inside the try block
-        # lock.release()  # Removed – handled in finally
-        # return {"status": "error"}  # Removed – handled by return in try
+```
