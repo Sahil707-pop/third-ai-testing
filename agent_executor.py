@@ -11,10 +11,8 @@ ENTITY_STATES: Dict[str, str] = {}
 
 class AgentExecutionEngine:
     async def execute_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        # Extract user_id from payload; raise if missing
-        user_id = payload.get("user_id")
-        if not user_id:
-            raise KeyError("'user_id' must be provided in payload")
+        # Directly access 'user_id' to surface missing key as KeyError
+        user_id = payload["user_id"]
 
         if user_id not in ACTIVE_LOCKS:
             ACTIVE_LOCKS[user_id] = asyncio.Lock()
