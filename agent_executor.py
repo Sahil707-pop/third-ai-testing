@@ -22,9 +22,8 @@ class AgentExecutionEngine:
             ACTIVE_LOCKS[user_id] = asyncio.Lock()
         lock = ACTIVE_LOCKS[user_id]
 
-        # Acquire lock for entity execution
-        await lock.acquire()
-        try:
+        # Use async context manager for safe lock acquisition/release
+        async with lock:
             ENTITY_STATES[user_id] = "RUNNING"
             logger.info(f"Starting execution for user {user_id}")
 
@@ -36,11 +35,3 @@ class AgentExecutionEngine:
 
             ENTITY_STATES[user_id] = "COMPLETED"
             return {"status": "success", "user_id": user_id}
-
-        except Exception as e:
-            logger.error(f"Task failed for {user_id}: {str(e)}")
-            ENTITY_STATES[user_id] = "FAILED"
-            raise e
-        finally:
-            # Release the lock only if it was acquired
-            lock.release()
