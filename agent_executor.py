@@ -1,4 +1,3 @@
-```python
 import asyncio
 import logging
 from typing import Dict, Any
@@ -11,19 +10,20 @@ ENTITY_STATES: Dict[str, str] = {}
 
 class AgentExecutionEngine:
     async def execute_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        # Extract user_id from payload; raise if missing
-        user_id = payload.get("user_id")
-        if not user_id:
+        # Ensure 'user_id' is present and truthy
+        if "user_id" not in payload:
             raise KeyError("'user_id' must be provided in payload")
+        user_id = payload["user_id"]
+        if not user_id:
+            raise KeyError("'user_id' must be a non‑empty value")
 
+        # Obtain or create lock for the user
         if user_id not in ACTIVE_LOCKS:
             ACTIVE_LOCKS[user_id] = asyncio.Lock()
-
         lock = ACTIVE_LOCKS[user_id]
 
         # Acquire lock for entity execution
         await lock.acquire()
-
         try:
             ENTITY_STATES[user_id] = "RUNNING"
             logger.info(f"Starting execution for user {user_id}")
@@ -42,6 +42,5 @@ class AgentExecutionEngine:
             ENTITY_STATES[user_id] = "FAILED"
             raise e
         finally:
-            # Ensure the lock is always released
+            # Release the lock only if it was acquired
             lock.release()
-```
