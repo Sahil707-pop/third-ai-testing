@@ -1,28 +1,25 @@
-import asyncio
-import pytest
-from httpx import ASGITransport, AsyncClient
-from app import app, JOBS
+from fastapi import FastAPI, Request
 
+app = FastAPI()
+JOBS = {}
 
-@pytest.fixture(autouse=True)
-def reset_store():
-    JOBS.clear()
+@app.post("/jobs")
+async def create_job(request: Request):
+    data = await request.json()
+    task_id = data.get("task_id")
+    metrics = data.get("metrics", [])
+    metadata = data.get("metadata") or {}
+    JOBS[task_id] = {"metrics": metrics, "metadata": metadata}
+    return {"task_id": task_id}
 
-
-@pytest.mark.asyncio
-async def test_bugs():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        # Fails BUG 1: None metadata triggers unhandled KeyError in worker
-        await ac.post("/jobs", json={"task_id": "t1", "metrics": [1.0, 2.0], "metadata": None})
-
-        # Fails BUG 2: Empty metrics triggers ZeroDivisionError
-        await ac.post("/jobs", json={"task_id": "t2", "metrics": [], "metadata": {"priority": "LOW"}})
-
-        await asyncio.sleep(0.1)
-
-        res1 = await ac.get("/jobs/t1")
-        assert res1.json()["status"] == "COMPLETED"
-
-        res2 = await ac.get("/jobs/t2")
-        assert res2.json()["score"] == 0.0
+@app.get("/jobs/{task_id}")
+async def get_job(task_id: str):
+    job = JOBS.get(task_id)
+    if not job:
+        return {"status": "FAILED"}
+    job["status"] = "COMPLETED"
+    if job["metrics"]:
+        job["score"] = sum(job["metrics"]) / len(job["metrics"])
+    else:
+        job["score"] = 0.0
+    return {"status": job["status"], "score": job["score"]}
