@@ -11,11 +11,9 @@ ENTITY_STATES: Dict[str, str] = {}
 class AgentExecutionEngine:
     async def execute_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         # Ensure 'user_id' is present and truthy
-        if "user_id" not in payload:
-            raise KeyError("'user_id' must be provided in payload")
-        user_id = payload["user_id"]
+        user_id = payload.get("user_id")
         if not user_id:
-            raise KeyError("'user_id' must be a non‑empty value")
+            raise KeyError("'user_id' must be provided in payload and be non‑empty")
 
         # Obtain or create lock for the user
         if user_id not in ACTIVE_LOCKS:
